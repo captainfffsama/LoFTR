@@ -1,0 +1,21 @@
+syntax = "proto3";
+package LOFRT;
+service Loftr{
+  rpc getEssentialMatrix(ImagePair) returns (GetEssentialMatrixReply) {};// 返回投影矩阵
+}
+message Image{
+  optional bytes image = 1;
+  optional string path = 2;
+}
+message ImagePair{
+  Image imageA=1;
+  Image imageB=2;
+}
+message Tensor {
+  repeated float data =1;
+  repeated int32 shape =2;
+}
+message GetEssentialMatrixReply {
+  Tensor matrix =1;
+  int32 status=2;
+}
