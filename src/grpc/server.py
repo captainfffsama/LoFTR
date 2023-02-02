@@ -2,11 +2,13 @@
 @Author: captainfffsama
 @Date: 2023-02-02 15:59:46
 @LastEditors: captainfffsama tuanzhangsama@outlook.com
-@LastEditTime: 2023-02-02 16:08:41
+@LastEditTime: 2023-02-02 16:43:55
 @FilePath: /LoFTR/src/grpc/server.py
 @Description:
 '''
 import numpy as np
+
+from src.loftr import default_cfg
 
 from . import loftr_pb2
 from .loftr_pb2_grpc import LoftrServicer
@@ -17,7 +19,6 @@ from .utils import decode_img_from_proto, np2tensor_proto, img2pb_img
 
 class LoFTRServer(LoftrServicer):
     def __init__(self,
-                 config,
                  ckpt_path,
                  device="cuda:0",
                  thr=0.5,
@@ -28,7 +29,7 @@ class LoFTRServer(LoftrServicer):
                  **kwargs):
         super().__init__(*args, **kwargs)
         self.worker = LoFTRWorker(
-            config,
+            default_cfg,
             ckpt_path,
             device,
             thr,

@@ -12,9 +12,10 @@ import numpy as np
 
 from src.loftr import LoFTR, default_cfg
 
-DebugInfo=namedtuple("DebugInfo",
-                        ["kp0_fake_match","kp1_fake_match",
-                        "kp0_true_match","kp1_true_match"])
+DebugInfo = namedtuple(
+    "DebugInfo",
+    ["kp0_fake_match", "kp1_fake_match", "kp0_true_match", "kp1_true_match"])
+
 
 class LoFTRWorker(object):
 
@@ -32,20 +33,27 @@ class LoFTRWorker(object):
             device = 'cpu'
             print("ERROR: cuda can not use, will use cpu")
         self.model = self.model.eval().to(device)
-        self.thr=thr
-        self.ransc_method = getattr(cv2,ransc_method)
-        self.ransc_thr=ransc_thr
-        self.ransc_max_iter=ransc_max_iter
+        self.thr = thr
+        self.ransc_method = getattr(cv2, ransc_method)
+        self.ransc_thr = ransc_thr
+        self.ransc_max_iter = ransc_max_iter
 
-    def _img2gray(self, img):
+    def _imgdeal(self, img):
         if len(img.shape) == 3 and img.shape[-1] == 3:
             img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
-        return img
+        oh, ow = img.shape[:2]
+        img = cv2.resize(img, (640, 480))
+        h, w = img.shape[:2]
+        fix_matrix = np.array([[w / ow, 0, 0], [0, h / oh, 0], [0, 0, 1]])
+        return img, fix_matrix
 
-    def __call__(self, img0, img1,debug=""):
-        img0 = self._img1gray(img0)
-        img1 = self._img1gray(img1)
+    def _fix_H(self, fm0, fm1, H):
+        return np.linalg.inv(fm0) @ H @ fm1
+
+    def __call__(self, img0, img1, debug=""):
+        img0, fm0 = self._imgdeal(img0)
+        img1, fm1 = self._imgdeal(img1)
         img0 = torch.from_numpy(img0)[None][None].cuda() / 255.
         img1 = torch.from_numpy(img1)[None][None].cuda() / 255.
 
@@ -56,33 +64,33 @@ class LoFTRWorker(object):
             mkpts1 = batch['mkpts1_f'].cpu().numpy()
             mconf = batch['mconf'].cpu().numpy()
 
-        idx=np.where(mconf>self.thr)
-        mconf=mconf[idx]
-        mkpts0=mkpts0[idx]
-        mkpts1=mkpts1[idx]
+        idx = np.where(mconf > self.thr)
+        mconf = mconf[idx]
+        mkpts0 = mkpts0[idx]
+        mkpts1 = mkpts1[idx]
 
-        debug_info=None
+        debug_info = None
+        H = np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]], dtype=np.float)
         if mkpts0.shape[0] < 4 or mkpts1.shape[0] < 4:
-            return np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]],
-                            dtype=np.float), False,debug_info
+            return self._fix_H(fm0, fm1, H), False, debug_info
 
         H, Mask = cv2.findHomography(mkpts0[:, :2],
-                                    mkpts1[:, :2],
-                                    self.ransc_method,
-                                    self.ransc_thr,
-                                    maxIters=self.ransc_max_iter)
-        Mask=np.squeeze(Mask)
+                                     mkpts1[:, :2],
+                                     self.ransc_method,
+                                     self.ransc_thr,
+                                     maxIters=self.ransc_max_iter)
+        Mask = np.squeeze(Mask)
         if debug:
 
-            kp0_true_matched=mkpts0[Mask.astype(bool),:2]
-            kp1_true_matched=mkpts1[Mask.astype(bool),:2]
-            kp0_fake_matched=mkpts0[~Mask.astype(bool),:2]
-            kp1_fake_matched=mkpts1[~Mask.astype(bool),:2]
+            kp0_true_matched = mkpts0[Mask.astype(bool), :2]
+            kp1_true_matched = mkpts1[Mask.astype(bool), :2]
+            kp0_fake_matched = mkpts0[~Mask.astype(bool), :2]
+            kp1_fake_matched = mkpts1[~Mask.astype(bool), :2]
 
-            debug_info=DebugInfo(kp0_fake_matched,kp1_fake_matched,kp0_true_matched,kp1_true_matched)
+            debug_info = DebugInfo(kp0_fake_matched, kp1_fake_matched,
+                                   kp0_true_matched, kp1_true_matched)
 
         if H is None:
-            return np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]],
-                            dtype=np.float), False,debug_info
+            return self._fix_H(fm0, fm1, H), False, debug_info
         else:
-            return H, True,debug_info
+            return self._fix_H(fm0, fm1, H), True, debug_info
