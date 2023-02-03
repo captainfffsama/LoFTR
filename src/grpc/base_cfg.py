@@ -3,7 +3,7 @@
 @Author: captainfffsama
 @Date: 2023-02-02 16:40:37
 @LastEditors: captainfffsama tuanzhangsama@outlook.com
-@LastEditTime: 2023-02-02 16:42:41
+@LastEditTime: 2023-02-03 10:34:31
 @FilePath: /LoFTR/src/grpc/base_cfg.py
 @Description:
 '''
@@ -15,8 +15,19 @@ param = dict(grpc=dict(host='127.0.0.1',
                        max_workers=10,
                        max_send_message_length=100 * 1024 * 1024,
                        max_receive_message_length=100 * 1024 * 1024),
-             loftr=dict(ckpt_path="",device="cuda:0",thr=0.5,ransc_method="USAC_MAGSAC",ransc_thr=3,ransc_max_iter=2000,
-))
+             loftr=dict(ckpt_path="",
+                        img_size=(640, 480),
+                        device="cuda:0",
+                        thr=0.5,
+                        ransc_method="USAC_MAGSAC",
+                        ransc_thr=3,
+                        ransc_max_iter=2000,
+                        debug=False,
+                        debug_show_type=(
+                            "vis",
+                            "false",
+                            "true",
+                        )))
 
 
 def _update(dic1: dict, dic2: dict):
@@ -60,4 +71,3 @@ def merge_param(file_path: str):
         raise ValueError('{} is not support'.format(cfg_ext))
     else:
         globals()[func_name](file_path)
-

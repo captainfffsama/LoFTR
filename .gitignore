@@ -6,6 +6,7 @@ __pycache__/
 *.pth
 tmp.*
 */.ipynb_checkpoints/*
+test/
 
 logs/
 weights/
